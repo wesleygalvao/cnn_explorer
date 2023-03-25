@@ -31,8 +31,8 @@ class ExtractCnnMaps:
 
     """
 
-    # TODO remover a entrada do dataset. A imagem já basta.
 
+    # TODO: Remove the dataset input. The image is enough.
     def __init__(
             self,
             model: torch.nn.Module,
@@ -91,7 +91,7 @@ class ExtractCnnMaps:
 
         return layer_feature_maps
 
-        # TODO: Descrever a função
+
 
     def get_multiple_feature_maps(
             self,
