@@ -16,7 +16,6 @@ class ExtractCnnLayers:
     Methods:
     --------
     get_layers(layers_paths: list) -> dict
-        Extracts layer information from the model.
     """
 
     def __init__(

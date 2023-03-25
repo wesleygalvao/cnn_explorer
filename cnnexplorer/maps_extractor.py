@@ -181,6 +181,7 @@ class ExtractCnnMaps:
             n_first_maps: int = 64,
             plot_title: bool = True
     ) -> None:
+
         """Show the feature maps extracted from a list of given layers. The feature maps can be provided as an input or the
         get_feature_maps function can be used to extract the feature maps.
 
@@ -385,6 +386,7 @@ class ExtractCnnMaps:
             n_first_kernels: int = 64,
             plot_title: bool = True
     ) -> None:
+
         """Show the channels extracted from a list of given layers for a specified kernel. The kernels can be provided as
         an input or the get_kernels function can be used to extract the kernels.
         Parameters:
