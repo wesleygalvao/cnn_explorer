@@ -5,18 +5,32 @@ from pandas import Series, DataFrame
 from cnnexplorer.utils import feature_maps_interp, image_sampling, binary_dilation, feature_maps_masking, \
     get_image_label, remove_prefix
 from cnnexplorer.layer_extractor import ExtractCnnLayers
-from cnnexplorer.maps_extractor import ExtractResUNetMaps
+from cnnexplorer.maps_extractor import ExtractCnnMaps
 
 import pandas as pd
 import numpy as np
 import pyprog
 import torch
 import gc  # Garbage colector
-import json  # DataFrame.to_json
 
 
-def check_models_name(model1_name, model2_name):
+def check_models_name(model1_name: str, model2_name: str):
     """Function to check if the names of the models are the same.
+    If the names are the same, then the names are changed to model1_name(1) and model2_name(2).
+
+    Parameters
+    ----------
+    model1_name : str
+        Name of the first model.
+    model2_name : str
+        Name of the second model.
+
+    Returns
+    -------
+    model1_name : str
+        Name of the first model.
+    model2_name : str
+        Name of the second model.
     """
     if model1_name == model2_name:
         model1_name = model1_name + '(1)'
@@ -26,11 +40,26 @@ def check_models_name(model1_name, model2_name):
 
 
 def check_if_map_is_zero(
-        feature_map1,
-        feature_map2,
+        feature_map1: torch.Tensor,
+        feature_map2: torch.Tensor,
 ):
     """Function to check if the pair of feature maps are mostly composed of zero values. It's a treatment to avoid
   NaN correlations.
+
+    Parameters
+    ----------
+    feature_map1 : torch.Tensor
+        First feature map.
+    feature_map2 : torch.Tensor
+        Second feature map.
+
+    Returns
+    -------
+    zero_flag_fm_1 : int
+        Flag to indicate if the first feature map is mostly composed of zero values.
+    zero_flag_fm_2 : int
+        Flag to indicate if the second feature map is mostly composed of zero values.
+
   """
     # Calculate standard deviation of both feature maps
     std_fm_1 = feature_map1.std()
@@ -54,6 +83,45 @@ def check_if_map_is_zero(
 
 
 class CorrelationExplorer:
+    """Class to explore the correlation between feature maps of two CNN models.
+
+    Parameters
+    ----------
+    None
+
+    Attributes
+    ----------
+    fm_corr_dict : dict
+        Dictionary with the correlation between feature maps of two CNN models.
+    min_fm_corr_dict : dict
+        Dictionary with the minimum correlation between feature maps of two CNN models.
+    max_fm_corr_dict : dict
+        Dictionary with the maximum correlation between feature maps of two CNN models.
+    stats_min_corr_dict : dict
+        Dictionary with stats of the minimum correlation between feature maps of two CNN models.
+    stats_max_corr_dict : dict
+        Dictionary with stats the maximum correlation between feature maps of two CNN models.
+    fm_corr : pandas.DataFrame
+        Dataframe with the correlation between feature maps of two CNN models.
+    min_fm_corr : pandas.DataFrame
+        Dataframe with the minimum correlation between feature maps of two CNN models.
+    max_fm_corr : pandas.DataFrame
+        Dataframe with the maximum correlation between feature maps of two CNN models.
+    stats_min_corr : pandas.DataFrame
+        Dataframe with the stats minimum correlation between feature maps of two CNN models.
+    stats_max_corr : pandas.DataFrame
+        Dataframe with the stats maximum correlation between feature maps of two CNN models.
+
+    Methods
+    -------
+    pearson_correlation()
+    feature_maps_correlation()
+    multiple_feature_maps_correlation()
+    get_max_correlations()
+    get_min_correlations()
+    get_correlation_stats()
+    correlation_pipeline()
+    """
 
     def __init__(self):
         self.fm_corr_dict = None
@@ -69,10 +137,23 @@ class CorrelationExplorer:
 
     def pearson_correlation(
             self,
-            feature_map1,
-            feature_map2
+            feature_map1: torch.Tensor,
+            feature_map2: torch.Tensor,
     ):
         """Function to calculate Pearson correlation between two tensors.
+
+        Parameters
+        ----------
+        feature_map1 : torch.Tensor
+            First feature map.
+        feature_map2 : torch.Tensor
+            Second feature map.
+
+        Returns
+        -------
+        corr : float
+            Pearson correlation between two tensors.
+
       """
         # Concatenate two tensors along a new dimension.
         x = torch.stack([feature_map1, feature_map2])
@@ -89,7 +170,7 @@ class CorrelationExplorer:
             corr.numpy()
 
         return corr
-    #identation
+
     def feature_maps_correlation(
             self,
             model1_name: str,
@@ -198,11 +279,14 @@ class CorrelationExplorer:
 
     def multiple_feature_maps_correlation(
             self,
-            layers_metadata1,
-            layers_metadata2,
-            feature_list_model1,
-            feature_list_model2
+            layers_metadata1: dict[str, Any],
+            layers_metadata2: dict[str, Any],
+            feature_list_model1: list[str],
+            feature_list_model2: list[str]
     ) -> tuple[Union[Union[Series, DataFrame], Any], dict[str, Any]]:
+        """Function to compute the correlation between feature maps of multiple layers from different models.
+
+        """
 
         # A dict to store DataFrames of feature maps correlations
         feature_maps_corr, feature_maps_corr_dict = [], {}
@@ -325,6 +409,7 @@ class CorrelationExplorer:
             min_corr_threshold: float = 0.0,
             same_model: bool = False
     ) -> tuple[Union[Union[Series, DataFrame], Any], dict[str, Any]]:
+
         """Obtains the maximum correlation among all combinations of correlations between the feature maps of two models,
         given the metadata of two observed layers, and a dictionary with DataFrames that represent the correlation
         between the feature maps of the two models.
@@ -410,15 +495,18 @@ class CorrelationExplorer:
     # TODO: documentar a função
     def get_correlation_stats(
             self,
-            max_or_fm_corr_dict,
-            layers_metadata1,
-            layers_metadata2,
+            max_or_fm_corr_dict: dict,
+            layers_metadata1: dict,
+            layers_metadata2: dict,
             same_model=False
-    ):
+    ) -> tuple[Union[Union[Series, DataFrame], Any], dict[str, Any]]:
 
         """From the maximum or minimum correlation dict, this function calculates the stats of the most frequent
         correlations between feature maps of two models. The stats are: the number of feature maps, their mean,
         median and standard deviation.
+
+        Parameters:
+        -----------
 
         """
         stats_correlation, stats_correlation_dict = [], {}
@@ -463,26 +551,75 @@ class CorrelationExplorer:
 
         return stats_correlation, stats_correlation_dict
 
-    # TODO: documentar a função
     def correlation_pipeline(
             self,
-            img,
-            layers_list1,
-            layers_list2,
-            model1,
-            model2,
-            model1_name,
-            model2_name,
+            img: torch.Tensor,
+            layers_list1: list,
+            layers_list2: list,
+            model1: torch.nn.Module,
+            model2: torch.nn.Module,
+            model1_name: str,
+            model2_name: str,
             same_model=False,
-            min_corr_threshold=0.0,
-            max_corr_threshold=1.0,
-            save_path=None,
-            condensed_files=True,
-            file_type='csv',
-            device='cuda',
-            memory_cleaning=False
-    ):
+            min_corr_threshold: float = 0.0,
+            max_corr_threshold: float = 1.0,
+            save_path: str = None,
+            condensed_files: bool = True,
+            file_type: str = 'csv',
+            device: str = 'cuda',
+            memory_cleaning: bool = False
+    ) -> tuple[Union[Union[Series, DataFrame], Any], dict[str, Any]]:
         """
+        This function is the pipeline to extract the correlation between feature maps of two models.
+        It is possible to extract the correlation between feature maps of the same model or between
+        feature maps of different models.
+
+        Parameters:
+        -----------
+        img: torch.Tensor
+            The image to be used to extract the feature maps.
+        layers_list1: list
+            The list of layers to be used to extract the feature maps from the first model.
+        layers_list2: list
+            The list of layers to be used to extract the feature maps from the second model.
+        model1: torch.nn.Module
+            The first model to be used to extract the feature maps.
+        model2: torch.nn.Module
+            The second model to be used to extract the feature maps.
+        model1_name: str
+            The name of the first model.
+        model2_name: str
+            The name of the second model.
+        same_model: bool
+            If True, the feature maps will be extracted from the same model. If False, the feature maps will be
+            extracted from different models.
+        min_corr_threshold: float
+            The minimum correlation threshold to be used to filter the feature maps.
+        max_corr_threshold: float
+            The maximum correlation threshold to be used to filter the feature maps.
+        save_path: str
+            The path to save the results.
+        condensed_files: bool
+            If True, the results will be saved in a single file. If False, the results will be saved in
+            multiple files.
+        file_type: str
+            The type of file to save the results. It can be 'csv' or 'json'.
+        device: str
+            The device to be used to extract the feature maps. It can be 'cpu' or 'cuda'.
+        memory_cleaning: bool
+            If True, the memory will be cleaned after each layer. If False, the memory will not be cleaned.
+
+        Returns:
+        --------
+        max_corr_dict: dict
+            A dictionary with the maximum correlation between feature maps of two models.
+        max_or_fm_corr_dict: dict
+            A dictionary with the maximum correlation between feature maps of two models or the feature maps
+            with the highest correlation.
+        stats_correlation: pandas.DataFrame
+            A pandas DataFrame with the statistics of the correlation between feature maps of two models.
+        stats_correlation_dict: dict
+            A dictionary with the statistics of the correlation between feature maps of two models.
       """
         # Initialize ExtractCnnLayers class
         erl_model1 = ExtractCnnLayers(model=model1, model_name=model1_name)
@@ -492,9 +629,9 @@ class CorrelationExplorer:
         layers_metadata_model1 = erl_model1.get_layers(layers_paths=layers_list1)
         layers_metadata_model2 = erl_model2.get_layers(layers_paths=layers_list2)
 
-        # Initialize ExtractResUNetMaps
-        erm_model1 = ExtractResUNetMaps(model=model1, dataset=None, image=img, device=device)
-        erm_model2 = ExtractResUNetMaps(model=model2, dataset=None, image=img, device=device)
+        # Initialize ExtractCnnMaps
+        erm_model1 = ExtractCnnMaps(model=model1, dataset=None, image=img, device=device)
+        erm_model2 = ExtractCnnMaps(model=model2, dataset=None, image=img, device=device)
 
         # Extract feature maps from layers
         fm_list_model1 = erm_model1.get_multiple_feature_maps(layers=layers_metadata_model1['layer'])
@@ -560,12 +697,29 @@ class CorrelationExplorer:
             layers_metadata2: dict,
             file_type: str = 'csv',
             condensed_files: bool = True
-    ):
-        """
+    ) -> None:
+        """Save all results in a single file or in multiple files.
+
+        Parameters:
+        -----------
+        save_path: str
+            The path to save the results.
+        layers_metadata1: dict
+            A dictionary with the metadata of the layers of the first model.
+        layers_metadata2: dict
+            A dictionary with the metadata of the layers of the second model.
+        file_type: str
+            The type of file to save the results. It can be 'csv' or 'json'.
+        condensed_files: bool
+            If True, the results will be saved in a single file. If False, the results will be saved in multiple files.
+
+        Returns:
+        --------
+        None
+
       """
 
-        # TODO Verificar se o diretório é válido. Se não for, criar o diretório.
-
+        # TODO: Check if the directory is valid. If not, create the directory.
         if condensed_files:
             model1_name = layers_metadata1['model_name']
             model2_name = layers_metadata2['model_name']
