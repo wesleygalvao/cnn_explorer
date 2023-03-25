@@ -1,4 +1,3 @@
-from torch._C import LiteScriptModule
 from cnnexplorer.utils import ActivationSampler
 import torch
 import matplotlib.pyplot as plt
