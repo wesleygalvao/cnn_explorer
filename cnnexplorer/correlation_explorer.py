@@ -13,6 +13,7 @@ import pyprog
 import torch
 import gc  # Garbage colector
 
+# TODO: Improve documentation
 
 def check_models_name(model1_name: str, model2_name: str):
     """Function to check if the names of the models are the same.
